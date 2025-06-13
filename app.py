@@ -71,14 +71,10 @@ def get_historical_data(ip_df, new_op_df, days=30):
     op_grouped = group_patient_episodes(op_grouped)
 
     for date in ip_dates:
-        # This must be episode presence logic!
-        mask = (op_grouped['Group Admit Date'] <= date) & (op_grouped['Group Discharge Date'] >= date)
-        count_newop = len(op_grouped[mask].drop_duplicates(subset=['MRN', 'Group Admit Date']))
-        new_op_counts.append(count_newop)
-
-    for date in ip_dates:
+        # Count IP patients for this date
         count_ip = len(ip_df[ip_df['APPT_DATE'].dt.date == date.date()]['MRN'].unique())
         ip_counts.append(count_ip)
+        # Count New OP patients present in episode at this date
         mask = (op_grouped['Group Admit Date'] <= date) & (op_grouped['Group Discharge Date'] >= date)
         count_newop = len(op_grouped[mask].drop_duplicates(subset=['MRN', 'Group Admit Date']))
         new_op_counts.append(count_newop)
@@ -88,6 +84,7 @@ def get_historical_data(ip_df, new_op_df, days=30):
         'IP Patients': ip_counts,
         'New OP Patients': new_op_counts,
     })
+
 
 st.title("Patient Data Analysis")
 
