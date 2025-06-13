@@ -133,12 +133,16 @@ if uploaded_file is not None:
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
+    st.subheader("Total Unique Patients Trend (Last 30 Days)")
+    historical_data = get_historical_data(ip_df, new_op_df)
+    
     fig_line = px.line(
         historical_data,
         x='Date',
-        y=['IP Patients', 'New OP Patients'],
-        title="Daily Patient Counts (Line Chart)",
+        y='Total Unique Patients',
+        title="Daily Total Unique Patients (Line Chart)",
         markers=True
     )
     st.plotly_chart(fig_line, use_container_width=True)
+
 
