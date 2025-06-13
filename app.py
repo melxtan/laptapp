@@ -66,25 +66,30 @@ def get_historical_data(ip_df, new_op_df, days=30):
     ip_dates = pd.date_range(start=start_date, end=end_date)
     ip_counts = []
     new_op_counts = []
+    total_unique_counts = []
 
     op_grouped = new_op_df[new_op_df['PATIENT_CLASS'] != 'Telemedicine'].copy()
     op_grouped = group_patient_episodes(op_grouped)
 
     for date in ip_dates:
-        # Count IP patients for this date
-        count_ip = len(ip_df[ip_df['APPT_DATE'].dt.date == date.date()]['MRN'].unique())
-        ip_counts.append(count_ip)
-        # Count New OP patients present in episode at this date
+        # Unique IP MRNs for the date
+        ip_mrns = set(ip_df[ip_df['APPT_DATE'].dt.date == date.date()]['MRN'].unique())
+        ip_counts.append(len(ip_mrns))
+
+        # Unique New OP MRNs for the date
         mask = (op_grouped['Group Admit Date'] <= date) & (op_grouped['Group Discharge Date'] >= date)
-        count_newop = len(op_grouped[mask].drop_duplicates(subset=['MRN', 'Group Admit Date']))
-        new_op_counts.append(count_newop)
+        op_mrns = set(op_grouped[mask].drop_duplicates(subset=['MRN', 'Group Admit Date'])['MRN'])
+        new_op_counts.append(len(op_mrns))
+
+        # Total unique MRNs (union)
+        total_unique_counts.append(len(ip_mrns.union(op_mrns)))
 
     return pd.DataFrame({
         'Date': ip_dates,
         'IP Patients': ip_counts,
         'New OP Patients': new_op_counts,
+        'Total Unique Patients': total_unique_counts,
     })
-
 
 st.title("Patient Data Analysis")
 
@@ -128,4 +133,12 @@ if uploaded_file is not None:
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
+    fig_line = px.line(
+        historical_data,
+        x='Date',
+        y=['IP Patients', 'New OP Patients'],
+        title="Daily Patient Counts (Line Chart)",
+        markers=True
+    )
+    st.plotly_chart(fig_line, use_container_width=True)
 
