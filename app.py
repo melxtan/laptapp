@@ -203,7 +203,7 @@ if uploaded_file is not None:
     fig_line = px.line(
         historical_data,
         x='Date',
-        y=['Total Patients'],
+        y='Total Patients',
         title="Total Unique Patients Per Day (Deduped by MRN + APPT_DATE)"
     )
     st.plotly_chart(fig_line, use_container_width=True)
