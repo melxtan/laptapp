@@ -9,7 +9,7 @@ def safe_get_col(df, keys, fill=''):
     for key in keys:
         if key in df.columns:
             return df[key]
-    return fill
+    return pd.Series([fill] * len(df), index=df.index)
 
 def group_patient_episodes(df):
     df = df.sort_values(['MRN', 'APPT_DATE']).copy()
