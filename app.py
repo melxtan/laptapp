@@ -98,25 +98,49 @@ def get_historical_data(ip_df, new_op_df, days=30):
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days)
     
+    # Ensure datetime
+    ip_df['APPT_DATE'] = pd.to_datetime(ip_df['APPT_DATE'])
+    new_op_df['APPT_DATE'] = pd.to_datetime(new_op_df['APPT_DATE'])
+
+    # Dates to iterate
     ip_dates = pd.date_range(start=start_date, end=end_date)
     ip_counts = []
-    for date in ip_dates:
-        count = len(ip_df[ip_df['APPT_DATE'].dt.date == date.date()]['MRN'].unique())
-        ip_counts.append(count)
-    
-    # Make sure new_op_df['APPT_DATE'] is datetime outside this function!
     new_op_counts = []
+
+    # Bar chart data: same as before
     for date in ip_dates:
-        count = len(new_op_df[
+        count_ip = len(ip_df[ip_df['APPT_DATE'].dt.date == date.date()]['MRN'].unique())
+        ip_counts.append(count_ip)
+
+        count_newop = len(new_op_df[
             (new_op_df['APPT_DATE'].dt.date == date.date()) & 
             (new_op_df['PATIENT_CLASS'] != 'Telemedicine')
         ]['MRN'].unique())
-        new_op_counts.append(count)
-    
+        new_op_counts.append(count_newop)
+
+    # For line chart: deduplicate MRN+APPT_DATE across both sources
+    # Filter for last 30 days only
+    ip_recent = ip_df[(ip_df['APPT_DATE'].dt.date >= start_date) & (ip_df['APPT_DATE'].dt.date <= end_date)].copy()
+    new_op_recent = new_op_df[(new_op_df['APPT_DATE'].dt.date >= start_date) & (new_op_df['APPT_DATE'].dt.date <= end_date) & 
+                              (new_op_df['PATIENT_CLASS'] != 'Telemedicine')].copy()
+
+    # Select same columns and combine
+    ip_recent['SOURCE'] = 'IP'
+    new_op_recent['SOURCE'] = 'New OP'
+    combined = pd.concat([ip_recent[['MRN', 'APPT_DATE', 'SOURCE']], new_op_recent[['MRN', 'APPT_DATE', 'SOURCE']]], ignore_index=True)
+    combined = combined.drop_duplicates(subset=['MRN', 'APPT_DATE'])
+
+    # For each date, count unique MRN+APPT_DATE
+    total_counts = []
+    for date in ip_dates:
+        count_total = len(combined[combined['APPT_DATE'].dt.date == date.date()])
+        total_counts.append(count_total)
+
     return pd.DataFrame({
         'Date': ip_dates,
         'IP Patients': ip_counts,
-        'New OP Patients': new_op_counts
+        'New OP Patients': new_op_counts,
+        'Total Patients': total_counts
     })
 
 # Main app
@@ -175,11 +199,12 @@ if uploaded_file is not None:
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # Line graph
+# Line chart: only total deduplicated patients
     fig_line = px.line(
         historical_data,
         x='Date',
-        y=['IP Patients', 'New OP Patients'],
-        title="Patient Trends Over Time"
+        y=['Total Patients'],
+        title="Total Unique Patients Per Day (Deduped by MRN + APPT_DATE)"
     )
     st.plotly_chart(fig_line, use_container_width=True)
+
